@@ -1,18 +1,21 @@
 const express = require("express");
 const app = express();
-const { adminAuth, userAuth } = require("./middlewares/auth");
 
-app.use("/admin", adminAuth);
+app.get("/user", (req, res) => {
+  try {
+    throw new Error("sdcse");
+  } catch (err) {
+    res.status(500).send("something wenting wrong");
+  }
 
-app.get("/user/data", userAuth, (req, res) => {
   res.send("User Data send ");
 });
-app.post("/user/data", userAuth, (req, res) => {
-  res.send("Post Data send ");
+app.use("/", (err, req, res, next) => {
+  if (err) {
+    res.status(500).send("something went wrong");
+  }
 });
-app.delete("/user/data", userAuth, (req, res) => {
-  res.send(" delete the Data  ");
-});
+
 app.listen(7498, () => {
   console.log("server is sucussfully listining running");
 });
