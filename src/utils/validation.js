@@ -11,4 +11,11 @@ const validateSignupData = (req) => {
     throw new Error("Enter a strong password ");
   }
 };
-module.exports = { validateSignupData };
+const validEditProfileDate = (req) => {
+  const allowedEditProfileDate = ["gender", "about"];
+  const isEditAllowed = Object.keys(req.body).every((field) => {
+    return allowedEditProfileDate.includes(field);
+  });
+  return isEditAllowed;
+};
+module.exports = { validateSignupData, validEditProfileDate };
