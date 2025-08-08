@@ -3,14 +3,29 @@ const { connectDB } = require("./config/database");
 const app = express();
 const PORT = 7498;
 const User = require("./models/user");
-
+const { validateSignupData } = require("./utils/validation");
+const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const { userAuth } = require("./middlewares/auth");
 app.use(express.json());
+app.use(cookieParser());
 
 //Post api
 app.post("/signup", async (req, res) => {
-  const newUser = new User(req.body);
-  console.log(newUser);
   try {
+    validateSignupData(req);
+    const { firstName, lastName, emailId, password } = req.body;
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: passwordHash,
+    });
+
     await newUser.save();
     res.send("data posted");
   } catch (err) {
@@ -21,7 +36,50 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// get api by emal
+app.post("/login", async (req, res) => {
+  const { emailId, password } = req.body;
+  try {
+    const user = await User.findOne({ emailId: emailId });
+    if (!user) {
+      throw new Error("invalid credentials");
+    }
+    const isPasswordValid = await user.validatepassword(password);
+
+    if (isPasswordValid) {
+      const token = await user.getJWT();
+
+      res.cookie("token", token, {
+        expires: new Date(Date.now() + 8 * 360000),
+      });
+      res.send("Loginn Successfully....");
+    } else {
+      throw new Error("invalid credentials");
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.message });
+  }
+});
+
+app.get("/profile", userAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    res.send(user);
+  } catch (err) {
+    res.status(400).send("error : " + err.message);
+  }
+});
+
+app.post("/sendConnection", userAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    console.log(user.firstName);
+    res.send(user.firstName + " is Logging");
+  } catch (err) {
+    res.status(400).send("error : " + err.message);
+  }
+});
+
+// get api by email
 app.get("/user", async (req, res) => {
   const userEmails = req.body.emailId;
   try {
@@ -37,7 +95,7 @@ app.get("/user", async (req, res) => {
   }
 });
 
-//Update Id
+// Update Id
 app.patch("/users/:userId", async (req, res) => {
   const userId = req.body.userId;
   const data = req.body;
