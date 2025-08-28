@@ -46,5 +46,5 @@ const validateResetPassword = (req) => {
 module.exports = {
   validateSignupData,
   validEditProfileDate,
-  validateResetPassword,
+  // validateResetPassword,
 };

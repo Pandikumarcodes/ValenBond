@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const secretKey = "PandiMernStack@newDeveloper";
+const secretKey = "Pandi";
 
 const userSchema = new mongoose.Schema(
   {
@@ -30,22 +30,14 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 8,
-      // validate(value) {
-      //   if (!validator.isStrongPassword(value)) {
-      //     throw new Error("Enter a strong password " + value);
-      //   }
-      // },
+      minlength: 5,
+      validate(value) {
+        if (!validator.isStrongPassword(value)) {
+          throw new Error("Enter a strong password " + value);
+        }
+      },
     },
-    // passwordHash: {
-    //   type: String,
-    //   required: true,
-    //   validate(value) {
-    //     if (typeof value !== "string" || !validator.isStrongPassword(value)) {
-    //       throw new Error("Enter a strong password");
-    //     }
-    //   },
-    // },
+
     age: {
       type: Number,
       min: 18,
@@ -74,6 +66,7 @@ const userSchema = new mongoose.Schema(
     },
     skills: {
       type: [String],
+      default: [],
     },
   },
   {
@@ -83,10 +76,11 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  const saltRounds = 10;
+  this.password = await bcrypt.hash(this.password, saltRounds);
   next();
 });
+
 userSchema.methods.getJWT = async function () {
   const user = this;
   const token = jwt.sign({ _id: user._id }, secretKey, { expiresIn: "1d" });
@@ -97,30 +91,32 @@ userSchema.methods.isValidPassword = async function (inputPassword) {
   return await bcrypt.compare(inputPassword, this.password);
 };
 
-userSchema.methods.validatepassword = async function (passwordInputByUser) {
-  const user = this;
-  const passwordHash = user.password;
+userSchema.methods.validatePassword = async function (passwordInputByUser) {
   const isPasswordValid = await bcrypt.compare(
     passwordInputByUser,
-    passwordHash
+    this.password
   );
+  console.log(isPasswordValid);
   return isPasswordValid;
 };
+// userSchema.methods.validatePassword = async function (inputPassword) {
+//   return await bcrypt.compare(inputPassword, this.password);
+// };
 
-userSchema.methods.resetUserPassword = async function (
-  newPassword,
-  confirmPassword
-) {
-  if (typeof newPassword !== "string" || newPassword.length === 0) {
-    throw new Error("New password must be a non-empty string");
-  }
-  if (newPassword !== confirmPassword) {
-    throw new Error("Passwords do not match");
-  }
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-  this.passwordHash = hashedPassword;
-  // await this.save();
-  return true;
-};
+// userSchema.methods.resetUserPassword = async function (
+//   newPassword,
+//   confirmPassword
+// ) {
+//   if (typeof newPassword !== "string" || newPassword.length === 0) {
+//     throw new Error("New password must be a non-empty string");
+//   }
+//   if (newPassword !== confirmPassword) {
+//     throw new Error("Passwords do not match");
+//   }
+//   const hashedPassword = await bcrypt.hash(newPassword, 10);
+//   this.passwordHash = hashedPassword;
+//   await this.save();
+//   return true;
+// };
 
 module.exports = mongoose.model("User", userSchema);

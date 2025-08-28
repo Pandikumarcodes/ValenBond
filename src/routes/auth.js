@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const User = require("../models/user");
 const {
   validateSignupData,
-  validateResetPassword,
+  // validateResetPassword,
 } = require("../utils/validation");
 const { userAuth } = require("../middlewares/auth");
 
@@ -12,20 +12,25 @@ authRouter.post("/signup", async (req, res) => {
   try {
     validateSignupData(req);
     const { firstName, lastName, emailId, password } = req.body;
-    const passwordHash = await bcrypt.hash(password, 10);
+    const existingUser = await User.findOne({ emailId });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+    // const salt = await bcrypt.genSalt(10);
+    // const passwordHash = await bcrypt.hash(password, 10);
+
     const newUser = new User({
       firstName,
       lastName,
       emailId,
-      password: passwordHash,
+      password,
     });
 
     await newUser.save();
-    res.send("data posted");
+
+    res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json({ error: "Email already exists" });
-    }
     res.status(400).json({ error: err.message });
   }
 });
@@ -33,22 +38,29 @@ authRouter.post("/signup", async (req, res) => {
 authRouter.post("/login", async (req, res) => {
   const { emailId, password } = req.body;
   try {
-    const user = await User.findOne({ emailId: emailId });
+    const user = await User.findOne({ emailId });
     if (!user) {
-      throw new Error("invalid credentials");
+      return res.status(401).json({ error: "Invalid credentials" });
     }
-    const isPasswordValid = await user.validatepassword(password);
-    if (isPasswordValid) {
-      const token = await user.getJWT();
-      res.cookie("token", token, {
-        expires: new Date(Date.now() + 8 * 360000),
-      });
-      res.send("Loginn Successfully....");
-    } else {
-      throw new Error("invalid credentials");
+    const isPasswordValid = await user.validatePassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid password" });
     }
+
+    const token = await user.getJWT();
+    res.cookie("token", token, {
+      httpOnly: true,
+      // expires: new Date(Date.now() + 8 * 60 * 60 * 1000),
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+    });
   } catch (err) {
-    res.status(400).send({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -84,34 +96,34 @@ authRouter.post("/emailverify", async (req, res) => {
   }
 });
 
-authRouter.patch("/resetPassword", userAuth, async (req, res) => {
-  try {
-    validateResetPassword(req);
+// authRouter.patch("/resetPassword", userAuth, async (req, res) => {
+//   try {
+//     validateResetPassword(req);
 
-    const { newPassword, confirmPassword } = req.body;
+//     const { newPassword, confirmPassword } = req.body;
 
-    const loggedInUser = req.user;
-    const success = await loggedInUser.resetUserPassword(
-      newPassword,
-      confirmPassword
-    );
-    console.log(loggedInUser);
-    await loggedInUser.save();
-    if (!success) {
-      return res.status(400).json({ error: "Passwords do not match" });
-    }
+//     const loggedInUser = req.user;
+//     const success = await loggedInUser.resetUserPassword(
+//       newPassword,
+//       confirmPassword
+//     );
 
-    const token = await loggedInUser.getJWT();
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours
-      httpOnly: true,
-    });
+//     await loggedInUser.save();
+//     if (!success) {
+//       return res.status(400).json({ error: "Passwords do not match" });
+//     }
 
-    res.json({ message: "Your password changed successfully." });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+//     const token = await loggedInUser.getJWT();
+//     res.cookie("token", token, {
+//       expires: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours
+//       httpOnly: true,
+//     });
+
+//     res.json({ message: "Your password changed successfully." });
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// });
 
 // authRouter.post("/reset-password", async (req, res) => {
 //   try {
