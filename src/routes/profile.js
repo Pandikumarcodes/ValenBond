@@ -2,6 +2,7 @@ const express = require("express");
 const profileRouter = express.Router();
 const { userAuth } = require("../middlewares/auth");
 const { validEditProfileDate } = require("../utils/validation");
+
 profileRouter.get("/profile", userAuth, async (req, res) => {
   try {
     const user = req.user;
@@ -38,4 +39,5 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
     res.status(400).send("error : " + err.message);
   }
 });
+
 module.exports = { profileRouter };
